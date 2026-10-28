@@ -1,5 +1,13 @@
 name: Build and test
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths-ignore: ["**.md", "docs/**"]
+  pull_request:
+    paths-ignore: ["**.md", "docs/**"]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -33,6 +41,33 @@ jobs:
       - run: cargo clippy -p meshclip-desktop --locked -- -D warnings
       - run: npm run tauri build -- --bundles nsis
         working-directory: apps/desktop
+      - name: Smoke-start native Windows desktop
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path "target/release/meshclip-desktop.exe").Path
+          $process = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput desktop.stdout.log -RedirectStandardError desktop.stderr.log
+          $ready = $false
+          try {
+            for ($i = 0; $i -lt 60; $i++) {
+              $process.Refresh()
+              if ($process.HasExited) { throw "Desktop exited before startup: $($process.ExitCode)" }
+              $client = [System.Net.Sockets.TcpClient]::new()
+              try {
+                $connect = $client.ConnectAsync("127.0.0.1", 47831)
+                if ($connect.Wait(500) -and $client.Connected) { $ready = $true; break }
+              } catch { } finally { $client.Dispose() }
+              Start-Sleep -Milliseconds 500
+            }
+            if (-not $ready) { throw "Desktop application listener did not become ready" }
+            Start-Sleep -Seconds 3
+            $process.Refresh()
+            if ($process.HasExited) { throw "Desktop exited after listener startup" }
+            Write-Output "Native desktop stayed alive with application listener on 127.0.0.1:47831"
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
+            Get-Content desktop.stdout.log, desktop.stderr.log -ErrorAction SilentlyContinue
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: meshclip-windows-x64-unsigned
