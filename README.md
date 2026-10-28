@@ -77,8 +77,8 @@ TypeScript desktop UI. MIT licensed. No cloud file server, VPN implementation or
 bundled EasyTier binaries.
 
 > **Development preview, not an accepted Windows MVP.** Core network tests and
-> frontend build run locally. A Windows desktop binary has not been built or
-> launched, and two real EasyTier-connected Windows devices have not been tested.
+> frontend build run locally. The baseline Windows desktop built and smoke-started
+> in CI run 40620113290; two real EasyTier-connected Windows devices remain untested.
 > See [progress](docs/progress.md) for exact evidence and remaining blockers.
 
 ## Implemented
@@ -122,7 +122,8 @@ npm run tauri build -- --bundles nsis
 
 Build output: `target/release/bundle/nsis/`. The workflow in
 `.github/workflows/ci.yml` builds/tests the core on Linux and Windows and attempts
-an unsigned Windows desktop installer. It has not run remotely yet.
+an unsigned Windows desktop installer. Baseline CI run 40620113290 passed the
+build and native EXE startup smoke.
 
 ## Connect two devices
 
@@ -178,7 +179,7 @@ Checked official upstream on **2026-10-28**:
 ## Known limits
 
 This revision does not yet satisfy all requested MVP acceptance conditions:
-Windows native build/runtime, real EasyTier two-device clipboard integration,
+Real EasyTier two-device clipboard integration,
 OS permissions, tray and autostart remain unverified. Same-name files are refused;
 rename/overwrite UI is pending. Receiving requires state and destination on one
 hard-link-capable volume. Short pairing codes and QR are not implemented. History
