@@ -88,10 +88,7 @@ fn main() {
             let exit = tauri::menu::MenuItem::with_id(app, "exit", "退出", true, None::<&str>)?;
             let menu = tauri::menu::Menu::with_items(app, &[&show, &exit])?;
             // Generated RGBA icon avoids binary assets in source.
-            let mut rgba = vec![0u8; 32 * 32 * 4];
-            for p in rgba.chunks_exact_mut(4) {
-                p.copy_from_slice(&[40, 194, 163, 255]);
-            }
+            let rgba = [40u8, 194, 163, 255].repeat(32 * 32);
             tauri::tray::TrayIconBuilder::new()
                 .icon(tauri::image::Image::new_owned(rgba, 32, 32))
                 .tooltip("MeshClip")
