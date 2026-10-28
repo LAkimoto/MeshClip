@@ -1,9 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+use meshclip_core::web::{WebBridge, WebInvitation};
 use meshclip_core::{
     model::{Config, Status, Ticket},
     Service,
 };
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+#[derive(Default)]
+struct MobileWeb(Mutex<Option<Arc<WebBridge>>>);
 use tauri::{Manager, State};
 type Backend = Arc<Service>;
 #[tauri::command]
@@ -65,11 +68,70 @@ fn clear_history(s: State<Backend>) {
 fn copy_text(s: State<Backend>, text: String) -> Result<(), String> {
     s.copy_local(text).map_err(|e| e.to_string())
 }
+#[tauri::command]
+async fn start_mobile(
+    s: State<'_, Backend>,
+    web: State<'_, MobileWeb>,
+    address: String,
+) -> Result<WebInvitation, String> {
+    if web.inner().0.lock().unwrap().is_some() {
+        return Err("请先关闭已有网页共享".into());
+    }
+    let bridge = WebBridge::start(s.inner().clone(), &address)
+        .await
+        .map_err(|e| e.to_string())?;
+    let invite = bridge.invitation().map_err(|e| e.to_string())?;
+    let mut current = web.inner().0.lock().unwrap();
+    if current.is_some() {
+        bridge.stop();
+        return Err("网页共享已启动".into());
+    }
+    *current = Some(bridge);
+    Ok(invite)
+}
+#[tauri::command]
+fn mobile_invitation(web: State<MobileWeb>) -> Result<WebInvitation, String> {
+    web.inner()
+        .0
+        .lock()
+        .unwrap()
+        .as_ref()
+        .ok_or("请先开启网页共享")?
+        .invitation()
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+fn stop_mobile(web: State<MobileWeb>) {
+    if let Some(b) = web.inner().0.lock().unwrap().take() {
+        b.stop();
+    }
+}
+#[tauri::command]
+async fn mobile_share(web: State<'_, MobileWeb>, path: Option<String>) -> Result<(), String> {
+    let bridge = web
+        .inner()
+        .0
+        .lock()
+        .unwrap()
+        .clone()
+        .ok_or("请先开启网页共享")?;
+    tokio::task::spawn_blocking(move || {
+        if let Some(path) = path {
+            bridge.share_file(path.into()).map(|_| ())
+        } else {
+            bridge.share_clipboard()
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
+}
 fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
     tauri::Builder::default()
+        .manage(MobileWeb::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .setup(|app| {
@@ -124,7 +186,11 @@ fn main() {
             retry,
             cancel,
             clear_history,
-            copy_text
+            copy_text,
+            start_mobile,
+            stop_mobile,
+            mobile_invitation,
+            mobile_share
         ])
         .run(tauri::generate_context!())
         .expect("MeshClip desktop failed");

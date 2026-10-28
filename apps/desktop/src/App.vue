@@ -48,7 +48,7 @@ interface Status {
   tasks: Record<string, Task>;
 }
 const tab = ref("概览"),
-  tabs = ["概览", "设备", "文件传输", "剪切板历史", "设置"];
+  tabs = ["概览", "设备", "文件传输", "剪切板历史", "手机网页", "设置"];
 const cfg = ref<Config>(),
   state = ref<Status>(),
   error = ref(""),
@@ -60,6 +60,15 @@ const cfg = ref<Config>(),
   auto = ref(false),
   blocked = ref(""),
   apps = ref("");
+interface MobileInvitation { url: string; qr_svg: string; certificate_sha256: string; expires: number }
+const mobile = ref<MobileInvitation>();
+const mobileAddress = ref("127.0.0.1:47832");
+async function shareMobileFiles() {
+  const paths = await open({ multiple: true });
+  if (paths) for (const path of typeof paths === "string" ? [paths] : paths)
+    await invoke("mobile_share", { path });
+  notice.value = "已共享所选文件；手机刷新文件列表即可下载。";
+}
 const desktop = isTauri();
 let timer: ReturnType<typeof setInterval> | undefined;
 let unlisten: (() => void) | undefined;
@@ -151,7 +160,7 @@ onUnmounted(() => {
           :class="{ active: tab === item }"
           @click="tab = item"
         >
-          <span>{{ ["◈", "⊞", "↗", "≡", "⚙"][i] }}</span
+          <span>{{ ["◈", "⊞", "↗", "≡", "▣", "⚙"][i] }}</span
           >{{ item }}
         </button>
       </nav>
@@ -406,6 +415,27 @@ onUnmounted(() => {
           暂无历史记录<small>默认不保留正文，可在设置中开启内存历史。</small>
         </div></template
       >
+      <template v-if="tab === '手机网页'">
+        <section>
+          <h3>手机扫码 · 网页剪切板与文件中转</h3>
+          <p>手机连接相同 Wi-Fi / 局域网，或自行加入与 Windows 相同的 EasyTier 网络。填写本机对应网卡的 IP 和独立网页端口；无需 MeshClip 手机客户端。</p>
+          <label>本机局域网 / EasyTier IP:端口<input v-model="mobileAddress" :disabled="!!mobile" placeholder="例如 192.168.1.10:47832" /></label>
+          <p>默认仅监听回环地址。请改为本机真实网卡 IP，并按需允许 Windows 防火墙入站；不支持 0.0.0.0。切换局域网 / EasyTier 地址前请关闭再开启共享。</p>
+          <button v-if="!mobile" :disabled="!desktop" @click="act(async () => { mobile = await invoke<MobileInvitation>('start_mobile', { address: mobileAddress }); })">开启 HTTPS 网页并生成二维码</button>
+          <template v-else>
+            <button @click="act(async () => { mobile = await invoke<MobileInvitation>('mobile_invitation'); })">刷新一次性二维码</button>
+            <button @click="act(async () => { await invoke('stop_mobile'); mobile = undefined; })">关闭共享并撤销全部手机会话</button>
+            <div class="mobile-qr" v-html="mobile.qr_svg"></div>
+            <p>手机使用系统相机扫码。邀请 120 秒有效且仅可兑换一次；已连接会话最长 1 小时。二维码即访问授权，请勿公开。</p>
+            <textarea readonly :value="mobile.url" aria-label="手机访问链接"></textarea>
+            <p>临时 HTTPS 证书 SHA-256（首次访问请核对，重开共享会变化）：</p><code class="fingerprint">{{ mobile.certificate_sha256 }}</code>
+            <p>证书为自签名，浏览器可能提示不受信任。须通过可信渠道核对指纹；系统限制无法继续时需部署可信 HTTPS 证书，暂不宣称兼容全部手机浏览器。</p>
+            <button @click="act(async () => { await invoke('mobile_share', { path: null }); notice = '当前剪切板已明确共享给所有已授权网页会话。'; })">主动共享当前 Windows 剪切板</button>
+            <button @click="act(shareMobileFiles)">选择文件共享给手机（每个 ≤ 64 MiB）</button>
+          </template>
+        </section>
+        <section><h3>权限与使用方式</h3><p>网页只显示你主动共享的文本与文件，不读取剪切板历史。手机发送文本会进入 Windows 剪切板写入队列；手机上传文件需在“文件传输”页确认，随后在手机点击“开始 / 继续”。</p><p>手机浏览器通常要求点击才能访问剪切板，支持手动粘贴 / 复制；锁屏与后台连续同步尚不支持。文件支持分块进度、取消、同会话续传和 SHA-256 校验。会话失效或重启后须重新扫码、重新提交文件请求。</p></section>
+      </template>
       <template v-if="tab === '设置' && cfg"
         ><section>
           <h3>本机与网络</h3>

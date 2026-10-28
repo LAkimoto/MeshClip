@@ -743,6 +743,66 @@ impl Service {
         *self.inbox.lock().unwrap() = Some(text);
         Ok(())
     }
+    // Web callers are authenticated by the separate, explicitly enabled HTTPS bridge.
+    pub(crate) fn web_offer(&self, peer: &str, offer: Offer) -> Result<Task> {
+        let max = self
+            .config
+            .lock()
+            .unwrap()
+            .max_file
+            .min(crate::web::MAX_WEB_FILE);
+        Receiver::validate(&offer, max)?;
+        let mut st = self.status.lock().unwrap();
+        ensure!(st.tasks.len() < 1000, "task limit reached");
+        let task = Task {
+            offer,
+            peer: peer.into(),
+            direction: "receive".into(),
+            status: "pending".into(),
+            offset: 0,
+            error: None,
+            bytes_per_second: 0,
+            eta_seconds: None,
+        };
+        ensure!(!st.tasks.contains_key(&task.offer.id), "duplicate task");
+        st.tasks.insert(task.offer.id.clone(), task.clone());
+        drop(st);
+        self.persist_tasks()?;
+        Ok(task)
+    }
+    pub(crate) fn web_task(&self, peer: &str, id: &str) -> Result<Task> {
+        let st = self.status.lock().unwrap();
+        let t = st
+            .tasks
+            .get(id)
+            .ok_or_else(|| anyhow::anyhow!("unknown task"))?;
+        ensure!(t.peer == peer, "unauthorized task");
+        Ok(t.clone())
+    }
+    pub(crate) fn web_chunk(&self, peer: &str, id: &str, offset: u64, bytes: &[u8]) -> Result<u64> {
+        self.require_active(id, peer)?;
+        let n = self
+            .receiver
+            .lock()
+            .unwrap()
+            .chunk(id, peer, offset, bytes)?;
+        self.update_task(id, n, "receiving", None)?;
+        Ok(n)
+    }
+    pub(crate) fn web_finish(&self, peer: &str, id: &str) -> Result<Task> {
+        let t = self.web_task(peer, id)?;
+        if t.status == "complete" {
+            return Ok(t);
+        }
+        self.require_active(id, peer)?;
+        let n = self.receiver.lock().unwrap().finish(id, peer)?;
+        self.update_task(id, n, "complete", None)?;
+        self.web_task(peer, id)
+    }
+    pub(crate) fn web_cancel(&self, peer: &str, id: &str) -> Result<()> {
+        self.web_task(peer, id)?;
+        self.cancel(id)
+    }
     pub fn clear_history(&self) {
         self.status.lock().unwrap().history.clear();
     }

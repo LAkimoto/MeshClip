@@ -374,3 +374,7 @@ footer {
   color: #93a6ad;
   margin-top: 35px;
 }
+
+.mobile-qr { background: white; width: fit-content; padding: 12px; margin: 20px 0; border-radius: 12px; }
+.mobile-qr svg { display: block; width: 256px; max-width: 100%; height: auto; }
+.fingerprint { display: block; overflow-wrap: anywhere; }

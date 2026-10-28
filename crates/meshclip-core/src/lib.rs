@@ -7,3 +7,5 @@ pub mod storage;
 pub mod transfer;
 pub mod transport;
 pub use service::Service;
+
+pub mod web;
