@@ -25,7 +25,9 @@ Date: 2026-10-28 (Asia/Shanghai). Status: **development preview; Windows MVP not
 - Process startup smoke: native diagnostic agent started, accepted TLS and returned a 32-byte challenge; Vite returned HTTP 200 with MeshClip title. Both temporary processes were terminated after the check. See startup-smoke.json.
 - `cargo check -p meshclip-desktop` on Linux: failed before application type checking because pkg-config/GLib/GTK/WebKit development libraries are absent. Attempted package installation did not complete because of container permission/source restrictions; stalled package command stopped.
 - `cargo check -p meshclip-desktop --target x86_64-pc-windows-msvc`: target standard library installed, but failed in ring's C build because MSVC `lib.exe` is unavailable. This is **not a successful Windows compile**.
-- Remote CI run 40619582267 exposed an oversized UTF-16 credential payload and a desktop Clippy lint. Both are fixed. Run 40619842748 confirms Ubuntu and Windows core checks/tests pass. Run 40620113290 builds the desktop and smoke-starts the native EXE; result pending.
+- Remote CI run 40619582267 exposed an oversized UTF-16 credential payload and a desktop Clippy lint. Both are fixed. Run 40619842748 confirms Ubuntu and Windows core checks/tests pass. Run 40620113290 passed all three jobs, including the Windows desktop build,
+  NSIS installer upload and native EXE startup smoke. This is baseline evidence,
+  not validation of the subsequently added mobile-web extension.
 
 Tested cases include: text duplicate event/hash/echo suppression, stale/future events,
 sensitive substring and size limits, pause, simultaneous copies, bidirectional
@@ -42,7 +44,7 @@ clipboard success is inferred from them.
 
 | Criterion | Status / evidence |
 |---|---|
-| 1. Windows desktop builds and starts | **Blocked/unverified**: requires Windows MSVC/WebView2 environment. |
+| 1. Windows desktop builds and starts | Baseline passed CI run 40620113290: Windows desktop Clippy, NSIS build and native EXE startup smoke. Mobile extension requires fresh validation. |
 | 2. Two EasyTier virtual IP endpoints connect | **Unverified**: no two EasyTier nodes available. Loopback TCP/TLS passes. |
 | 3. Paired Windows devices auto-sync both ways | **Partially implemented/unverified**: authenticated event exchange passes; real OS clipboards not tested. |
 | 4. Same content never loops | Event/hash suppression and remote-write owner logic implemented; protocol regression tests pass. OS loop test pending. |
@@ -83,3 +85,46 @@ clipboard success is inferred from them.
    configurable transfer retention and power-loss consistency.
 5. Benchmark persistent sessions before throughput claims. Only then mark MVP
    accepted and consider EasyTier management integration or other platforms.
+
+## Mobile-web extension (2026-10-28)
+
+Implemented a sixth desktop page to explicitly start/stop an independent HTTPS
+listener on a chosen LAN/EasyTier IP, generate actual one-use QR codes, show the
+temporary certificate fingerprint, explicitly share desktop text/selected files,
+and revoke all browser sessions. The mobile page supports text paste/send/copy,
+file offers, desktop acceptance, 256 KiB chunk progress/speed/ETA, same-session
+resume/cancel, verified downloads and a 64 MiB browser-file limit. Unknown
+sessions and other sessions' task operations are refused. No native mobile or
+background clipboard support is claimed. See mobile-web.md for protocol details.
+
+Local checks: 22 Rust tests (4 new real-HTTPS bridge tests, 18 existing), core
+Clippy, workspace format and Vue TypeScript/production build passed. Windows CI
+for this extension and physical phone/LAN/EasyTier acceptance are pending.
+
+The mobile extension is prepared on feature/mobile-web for pull-request review
+and extension-specific Windows CI. Browser visual smoke was blocked: Playwright's Chromium
+download returned invalid/truncated archives. The embedded mobile JavaScript
+syntax was checked; no rendered-browser or physical-phone success is inferred.
+
+## Integrated network selection
+
+Added explicit LAN/EasyTier service start and stop controls. Managed EasyTier is
+an unmodified, replaceable v2.6.4 process launched only with --config-file. Windows
+preparation pins the official archive's SHA-256 and includes binary/source
+archives, license texts and attribution. LAN mode needs no kernel. Startup waits
+for the explicit local bind, and failures clean up the process. Kernel exit is
+reported separately from MeshClip readiness. No automatic elevation, firewall
+changes, DHCP discovery, node-health claims or automatic restart are introduced.
+
+23 local core tests, core Clippy and Vue build pass. Windows packaging script,
+TUN privileges/driver behavior and integrated EasyTier connectivity are not yet
+verified on Windows. Desktop CI startup smoke now checks the interactive process
+stays alive; the listener intentionally remains stopped until a user starts it.
+
+### CI packaging download fix
+
+Run 40625444832 failed while downloading GPL-3.0 text from www.gnu.org (connection
+timeout). Vendored the verbatim GPL-3.0 text under third-party and changed the
+Windows preparation script to copy it locally. GitHub asset/source/license fetches
+now have explicit 120-second timeouts and three retries; the pinned kernel
+SHA-256 check remains mandatory. Windows verification runs through PR CI.

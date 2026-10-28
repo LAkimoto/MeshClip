@@ -77,8 +77,9 @@ TypeScript desktop UI. MIT licensed. No cloud file server, VPN implementation or
 bundled EasyTier binaries.
 
 > **Development preview, not an accepted Windows MVP.** Core network tests and
-> frontend build run locally. The baseline Windows desktop built and smoke-started
-> in CI run 40620113290; two real EasyTier-connected Windows devices remain untested.
+> frontend build run locally. The baseline Windows desktop was built and smoke-
+> started in CI (run 40620113290); the mobile-web extension needs its own Windows
+> CI validation. Two real EasyTier-connected Windows devices remain untested.
 > See [progress](docs/progress.md) for exact evidence and remaining blockers.
 
 ## Implemented
@@ -96,7 +97,7 @@ bundled EasyTier binaries.
 - Explicit folder-to-TAR sending. No automatic unpacking or file execution.
 - Persistent identity/config/trust/task records; Windows Credential Manager backend;
   separate receive staging; path and filename validation, disk-space checks.
-- Five UI pages connected to backend state, tray/background and autostart wiring.
+- Six UI pages connected to backend state, tray/background and autostart wiring.
   A browser preview clearly reports that the native backend is disconnected.
 
 ## Start on Windows 10/11 x64
@@ -123,7 +124,8 @@ npm run tauri build -- --bundles nsis
 Build output: `target/release/bundle/nsis/`. The workflow in
 `.github/workflows/ci.yml` builds/tests the core on Linux and Windows and attempts
 an unsigned Windows desktop installer. Baseline CI run 40620113290 passed the
-build and native EXE startup smoke.
+build and native EXE startup smoke; extension-specific results are recorded in
+[progress](docs/progress.md).
 
 ## Connect two devices
 
@@ -145,6 +147,54 @@ build and native EXE startup smoke.
    window. B must accept each offer. A then clicks Retry to begin/resume. Folder
    sends are TAR files and are not extracted automatically.
 6. Closing the window hides it to the tray. Use the tray Exit action to stop.
+
+## Mobile browser: QR, LAN or external EasyTier
+
+Open **手机网页** in Windows MeshClip. Enter the Windows LAN IP (for example
+`192.168.1.10:47832`) when the phone is on the same Wi-Fi/LAN, or its EasyTier
+virtual IP when the phone independently runs EasyTier in the same virtual network.
+MeshClip does not install, join or configure the phone's EasyTier client.
+
+1. Enable HTTPS sharing, then use the phone camera/scanner to open the QR URL.
+   A separate explicit-IP listener is opened only while this feature is enabled;
+   permit its port through Windows Firewall if needed. No wildcard binding.
+2. Verify the temporary self-signed certificate's SHA-256 fingerprint against the
+   desktop display over a trusted channel. Browser/OS trust warnings are expected;
+   do not continue if the certificate cannot be verified. Browser support after a
+   certificate exception varies. A trusted HTTPS reverse proxy/certificate setup
+   is not included in this preview.
+3. Each QR grants access: keep it private. It expires in 120 seconds and can be
+   exchanged once for a random, memory-only, one-hour browser session (maximum
+   eight). Refresh QR does not revoke already paired phones. **关闭共享并撤销全部
+   手机会话** stops the listener/connections and clears sessions and shared items.
+4. Click **主动共享当前 Windows 剪切板** to expose one filtered snapshot. The page
+   never reads desktop clipboard history or automatically polls the OS clipboard.
+   On the phone, paste/type and Send to Windows, or refresh and Copy to phone.
+   Receiving text enters the native clipboard write queue; desktop diagnostics
+   report OS write failures. It is an explicit action, independent of auto-sync.
+5. Choose files on Windows to make them downloadable on paired phones. Mobile
+   uploads create **pending** receive tasks in the desktop Files page. Accept
+   there, then tap **开始 / 继续** on the phone. Acknowledged 256 KiB offsets drive
+   progress, speed and ETA. After a disconnect/refresh, select the same file and
+   resume in the same unexpired session. Cancel/reject prevents further writes.
+
+Mobile-web files are capped at **64 MiB each**: browser WebCrypto hashes a bounded
+file buffer, and downloaded files are verified before saving. Desktop peer
+transfers retain their existing configurable limit. Finalized uploads use the
+same filename validation, no-overwrite, disk checks, staging and SHA-256 checks as
+native transfers; staging/receive directories must share a filesystem. Download
+links expose only individually selected files, never directory browsing. All
+active browser sessions share the explicitly published board and download list;
+only the owning browser session can inspect/write/cancel its upload tasks.
+
+Browser clipboard/camera APIs require platform permissions, trusted secure
+contexts and typically a user gesture. Manual long-press paste/copy remains the
+fallback. **No mobile background clipboard synchronization is claimed.** Locking
+the phone or switching apps can interrupt transfers. Browser sessions do not
+survive restarting/shutting down the bridge; old partial tasks must be cancelled
+on desktop and a new upload offered after reconnecting. No Android/iOS/HarmonyOS
+native client is provided or claimed as tested. See [mobile protocol and
+limitations](docs/mobile-web.md).
 
 ## Checks and diagnostics
 
@@ -191,3 +241,24 @@ support is claimed.
 
 Architecture, wire format, threat model, decisions and limitations:
 [docs/architecture.md](docs/architecture.md).
+
+## Windows 集成组网（开发中）
+
+启动后先选择“本地局域网”或“集成 EasyTier 内核组网”，再点击“启动服务”。
+局域网模式填写本机局域网 IP，无需 EasyTier。内核模式选择官方 EasyTier TOML
+配置，并填写配置中固定的虚拟 IP 和 MeshClip 应用端口；内核仅通过官方
+`--config-file` 接口启动。网络密钥保留在用户选择的配置文件中，不复制到
+MeshClip 普通配置、不显示在命令行或日志；请妥善限制该文件访问权限。
+
+构建 Windows 集成包前执行 `./scripts/prepare-easytier.ps1`，下载并校验官方
+v2.6.4 Windows x86_64 包，打包内核、DLL、LGPL/GPL 文本、对应源码归档及署名。
+开发模式也需要先执行该脚本。内核以可替换的独立进程运行，不链接到 MIT 核心。
+
+MeshClip 默认不启动应用监听服务。内核创建虚拟网卡可能需要管理员权限和驱动；
+不会自动提权或修改防火墙。启动失败会停止子进程并返回错误。停止服务也会关闭
+手机网页共享；退出进程时内核采用 kill-on-drop 清理。UI 切换模式前须先停止服务。
+进程运行仅说明内核存活，不表示 EasyTier 对端已互通。DHCP 地址自动发现和内核
+异常后自动重启尚未实现。上述内容取代此前仅使用外部 EasyTier 客户端的限制。
+
+验证边界：局域网服务生命周期有自动测试；Windows 集成内核打包、TUN 及实网
+启动尚待执行验证，不能视为已经完成。

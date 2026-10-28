@@ -5,6 +5,10 @@ edition = "2021"
 license = "MIT"
 [dependencies]
 anyhow = "1"
+axum = "0.8"
+hyper-util = { version = "0.1", features = ["server-auto", "tokio", "service"] }
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+tokio-util = { version = "0.7", features = ["io"] }
 arboard = { version = "3", default-features = false }
 async-trait = "0.1"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
@@ -24,4 +28,5 @@ uuid = { version = "1", features = ["v4", "serde"] }
 [target.'cfg(windows)'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }
 [dev-dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 tempfile = "3"
