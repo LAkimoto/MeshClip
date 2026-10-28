@@ -189,3 +189,15 @@ fn causal_local_clock_advances_even_for_identical_content() {
     assert!(f.next_timestamp() > time + 1);
     assert!(f.admit(&clip("b", f.next_timestamp()), &cfg));
 }
+
+#[test]
+fn windows_credential_blob_fits_and_round_trips() {
+    let id = Identity::generate().unwrap();
+    let blob = id.credential_blob().unwrap();
+    assert!(blob.len() <= 2560);
+    let restored = Identity::from_credential_blob(&blob).unwrap();
+    assert_eq!(restored.id(), id.id());
+    assert_eq!(restored.cert, id.cert);
+    assert_eq!(restored.tls_key, id.tls_key);
+    verify(&restored.public(), b"restored", &restored.sign(b"restored")).unwrap();
+}

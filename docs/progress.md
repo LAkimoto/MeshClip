@@ -14,18 +14,18 @@ Date: 2026-10-28 (Asia/Shanghai). Status: **development preview; Windows MVP not
 | Text synchronization | Text polling interface, filters, pause/per-device authorization, hash/event deduplication, deterministic conflict ordering, latest-event reconnect retry, memory history. Protocol/event behavior tested; OS clipboard integration unverified. |
 | File transfer | Real chunked binary transport, receiver approval, progress/speed/ETA, cancellation, manual retry, restart resume, SHA-256, disk checks, explicit folder TAR packaging. Same-volume finalization only. |
 | Checks | Format, core Clippy, core unit/integration tests and Vue production build executed. Native Linux and Windows cross-checks blocked by toolchain/system dependencies. |
-| GitHub | Public repository created at https://github.com/LAkimoto/MeshClip. Initial source upload and first Windows CI run are in progress. |
+| GitHub | Public repository created at https://github.com/LAkimoto/MeshClip. Source uploaded to main; first remote CI run started. Linux passed; Windows identity-size failure was fixed and is being revalidated. |
 
 ## Executed validation
 
 - `cargo fmt --all --check`: passed (workspace Rust sources).
-- `cargo test -p meshclip-core --locked`: **17 tests passed** (10 core, 7 real-TCP/TLS integration).
+- `cargo test -p meshclip-core --locked`: **18 tests passed locally on Linux** (11 core, 7 real-TCP/TLS integration; one symlink test is Unix-only).
 - `cargo clippy -p meshclip-core --all-targets --locked -- -D warnings`: passed.
 - `npm run build`: TypeScript check and Vite production build passed; frontend JS about 100 kB before gzip.
 - Process startup smoke: native diagnostic agent started, accepted TLS and returned a 32-byte challenge; Vite returned HTTP 200 with MeshClip title. Both temporary processes were terminated after the check. See startup-smoke.json.
 - `cargo check -p meshclip-desktop` on Linux: failed before application type checking because pkg-config/GLib/GTK/WebKit development libraries are absent. Attempted package installation did not complete because of container permission/source restrictions; stalled package command stopped.
 - `cargo check -p meshclip-desktop --target x86_64-pc-windows-msvc`: target standard library installed, but failed in ring's C build because MSVC `lib.exe` is unavailable. This is **not a successful Windows compile**.
-- Windows CI workflow added; first remote execution pending source upload.
+- Remote CI run 40619582267 executed: Ubuntu core passed; Windows core exposed an oversized UTF-16 credential payload. Compact byte serialization replaces password encoding; rerun pending. Windows desktop build is in progress.
 
 Tested cases include: text duplicate event/hash/echo suppression, stale/future events,
 sensitive substring and size limits, pause, simultaneous copies, bidirectional
@@ -65,6 +65,9 @@ clipboard success is inferred from them.
 - Connection memory/rate bounds, disk checks, sender concurrency, and cancellation
   worker guards added. Cancelled status cannot be overwritten by a late chunk ack.
 - Pair-invitation generation avoids retaining config lock while acquiring pairing lock.
+
+- Windows credential payload changed to compact hex JSON bytes using keyring secret APIs;
+  round-trip/size regression test added after the first Windows CI failure.
 
 ## Next concrete work
 
