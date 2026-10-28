@@ -229,7 +229,7 @@ Checked official upstream on **2026-10-28**:
 ## Known limits
 
 This revision does not yet satisfy all requested MVP acceptance conditions:
-Windows native build/runtime, real EasyTier two-device clipboard integration,
+Real EasyTier two-device clipboard integration,
 OS permissions, tray and autostart remain unverified. Same-name files are refused;
 rename/overwrite UI is pending. Receiving requires state and destination on one
 hard-link-capable volume. Short pairing codes and QR are not implemented. History
