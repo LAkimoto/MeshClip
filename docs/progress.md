@@ -14,7 +14,7 @@ Date: 2026-10-28 (Asia/Shanghai). Status: **development preview; Windows MVP not
 | Text synchronization | Text polling interface, filters, pause/per-device authorization, hash/event deduplication, deterministic conflict ordering, latest-event reconnect retry, memory history. Protocol/event behavior tested; OS clipboard integration unverified. |
 | File transfer | Real chunked binary transport, receiver approval, progress/speed/ETA, cancellation, manual retry, restart resume, SHA-256, disk checks, explicit folder TAR packaging. Same-volume finalization only. |
 | Checks | Format, core Clippy, core unit/integration tests and Vue production build executed. Native Linux and Windows cross-checks blocked by toolchain/system dependencies. |
-| GitHub | Public repository created at https://github.com/LAkimoto/MeshClip. Source uploaded to main; first remote CI run started. Linux passed; Windows identity-size failure was fixed and is being revalidated. |
+| GitHub | Public repository created at https://github.com/LAkimoto/MeshClip. Source uploaded to main; remote core checks pass on Ubuntu and Windows after the credential-size fix. Native desktop build/start validation is in progress. |
 
 ## Executed validation
 
@@ -25,7 +25,7 @@ Date: 2026-10-28 (Asia/Shanghai). Status: **development preview; Windows MVP not
 - Process startup smoke: native diagnostic agent started, accepted TLS and returned a 32-byte challenge; Vite returned HTTP 200 with MeshClip title. Both temporary processes were terminated after the check. See startup-smoke.json.
 - `cargo check -p meshclip-desktop` on Linux: failed before application type checking because pkg-config/GLib/GTK/WebKit development libraries are absent. Attempted package installation did not complete because of container permission/source restrictions; stalled package command stopped.
 - `cargo check -p meshclip-desktop --target x86_64-pc-windows-msvc`: target standard library installed, but failed in ring's C build because MSVC `lib.exe` is unavailable. This is **not a successful Windows compile**.
-- Remote CI run 40619582267 executed: Ubuntu core passed; Windows core exposed an oversized UTF-16 credential payload. Compact byte serialization replaces password encoding; rerun pending. Windows desktop build is in progress.
+- Remote CI run 40619582267 exposed an oversized UTF-16 credential payload and a desktop Clippy lint. Both are fixed. Run 40619842748 confirms Ubuntu and Windows core checks/tests pass. Run 40620113290 builds the desktop and smoke-starts the native EXE; result pending.
 
 Tested cases include: text duplicate event/hash/echo suppression, stale/future events,
 sensitive substring and size limits, pause, simultaneous copies, bidirectional
@@ -50,7 +50,7 @@ clipboard success is inferred from them.
 | 6. Files transfer with true progress | Loopback integration passes; UI wired to real acknowledged byte counts. Desktop visual/runtime verification pending. |
 | 7. Interrupted transfer is recognized and resumable | Passed restart/resume and retry integration tests. Ordinary restart only. |
 | 8. SHA-256 verifies finished file | Passed complete/corrupt transfer tests. |
-| 9. Config/trust persists across restart | Passed Linux tests; Windows Credential Manager backend unverified. |
+| 9. Config/trust persists across restart | Passed Linux and Windows runner tests, including Windows Credential Manager identity recovery. Desktop session behavior remains unverified. |
 | 10. Test/build results truthfully reported | Core/frontend checks pass; desktop checks blocked as recorded above. |
 
 ## Fixes made while validating
