@@ -1,0 +1,16 @@
+{
+  "name": "My Windows PC",
+  "listen": "10.144.144.1:47831",
+  "receive_dir": "C:\\Users\\YOUR_NAME\\Downloads\\MeshClip",
+  "enabled": false,
+  "max_text": 1048576,
+  "history_limit": 0,
+  "history_hours": 24,
+  "blocked_terms": ["-----BEGIN PRIVATE KEY", "password=", "Bearer "],
+  "ignored_apps": ["1password.exe", "KeePass.exe"],
+  "max_file": 17179869184,
+  "chunk_size": 262144,
+  "timeout_seconds": 15,
+  "transfer_concurrency": 2,
+  "peers": {}
+}

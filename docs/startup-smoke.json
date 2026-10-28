@@ -1,0 +1,7 @@
+{
+  "agent_tls_challenge_bytes": 32,
+  "frontend_http_status": 200,
+  "frontend_title_present": true,
+  "agent_alive": true,
+  "frontend_alive": true
+}

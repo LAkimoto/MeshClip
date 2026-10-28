@@ -1,0 +1,16 @@
+[package]
+name = "meshclip-desktop"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+[dependencies]
+meshclip-core = { path = "../../../crates/meshclip-core" }
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-autostart = "2"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"

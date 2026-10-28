@@ -1,0 +1,4 @@
+[workspace]
+members = ["crates/meshclip-core", "apps/desktop/src-tauri"]
+default-members = ["crates/meshclip-core"]
+resolver = "2"
