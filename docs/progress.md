@@ -120,3 +120,11 @@ changes, DHCP discovery, node-health claims or automatic restart are introduced.
 TUN privileges/driver behavior and integrated EasyTier connectivity are not yet
 verified on Windows. Desktop CI startup smoke now checks the interactive process
 stays alive; the listener intentionally remains stopped until a user starts it.
+
+### CI packaging download fix
+
+Run 40625444832 failed while downloading GPL-3.0 text from www.gnu.org (connection
+timeout). Vendored the verbatim GPL-3.0 text under third-party and changed the
+Windows preparation script to copy it locally. GitHub asset/source/license fetches
+now have explicit 120-second timeouts and three retries; the pinned kernel
+SHA-256 check remains mandatory. Windows verification runs through PR CI.

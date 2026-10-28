@@ -6,7 +6,7 @@ $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
 New-Item -ItemType Directory $temp | Out-Null
 try {
   $zip = Join-Path $temp 'kernel.zip'
-  Invoke-WebRequest 'https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-windows-x86_64-v2.6.4.zip' -OutFile $zip
+  Invoke-WebRequest 'https://github.com/EasyTier/EasyTier/releases/download/v2.6.4/easytier-windows-x86_64-v2.6.4.zip' -OutFile $zip -TimeoutSec 120 -MaximumRetryCount 3 -RetryIntervalSec 2
   if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLower() -ne '27af91e270e554709b048bd32327fefd2dfce5062ae1e8701af7550c6f525f84') { throw 'EasyTier archive SHA-256 mismatch' }
   Copy-Item $zip (Join-Path $out 'EasyTier-v2.6.4-binary.zip')
   Expand-Archive $zip (Join-Path $temp 'binary')
@@ -14,9 +14,9 @@ try {
   if (-not $exe) { throw 'Official archive missing easytier-core.exe' }
   Copy-Item $exe.FullName $out
   Get-ChildItem $exe.Directory.FullName -Filter '*.dll' | Copy-Item -Destination $out
-  Invoke-WebRequest 'https://github.com/EasyTier/EasyTier/archive/8428a89d2dabc94c97d370ec607c6ca142473626.zip' -OutFile (Join-Path $out 'EasyTier-v2.6.4-source.zip')
-  Invoke-WebRequest 'https://raw.githubusercontent.com/EasyTier/EasyTier/8428a89d2dabc94c97d370ec607c6ca142473626/LICENSE' -OutFile (Join-Path $out 'LICENSE-EasyTier')
-  Invoke-WebRequest 'https://www.gnu.org/licenses/gpl-3.0.txt' -OutFile (Join-Path $out 'COPYING-GPL-3.0.txt')
+  Invoke-WebRequest 'https://github.com/EasyTier/EasyTier/archive/8428a89d2dabc94c97d370ec607c6ca142473626.zip' -OutFile (Join-Path $out 'EasyTier-v2.6.4-source.zip') -TimeoutSec 120 -MaximumRetryCount 3 -RetryIntervalSec 2
+  Invoke-WebRequest 'https://raw.githubusercontent.com/EasyTier/EasyTier/8428a89d2dabc94c97d370ec607c6ca142473626/LICENSE' -OutFile (Join-Path $out 'LICENSE-EasyTier') -TimeoutSec 120 -MaximumRetryCount 3 -RetryIntervalSec 2
+  Copy-Item (Join-Path $root 'third-party/COPYING-GPL-3.0.txt') $out
   @'
 EasyTier v2.6.4, unmodified official Windows x86_64 binary.
 Copyright EasyTier contributors. Licensed LGPL-3.0; see LICENSE-EasyTier.
