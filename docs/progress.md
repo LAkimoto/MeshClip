@@ -105,3 +105,18 @@ The mobile extension is prepared on feature/mobile-web for pull-request review
 and extension-specific Windows CI. Browser visual smoke was blocked: Playwright's Chromium
 download returned invalid/truncated archives. The embedded mobile JavaScript
 syntax was checked; no rendered-browser or physical-phone success is inferred.
+
+## Integrated network selection
+
+Added explicit LAN/EasyTier service start and stop controls. Managed EasyTier is
+an unmodified, replaceable v2.6.4 process launched only with --config-file. Windows
+preparation pins the official archive's SHA-256 and includes binary/source
+archives, license texts and attribution. LAN mode needs no kernel. Startup waits
+for the explicit local bind, and failures clean up the process. Kernel exit is
+reported separately from MeshClip readiness. No automatic elevation, firewall
+changes, DHCP discovery, node-health claims or automatic restart are introduced.
+
+23 local core tests, core Clippy and Vue build pass. Windows packaging script,
+TUN privileges/driver behavior and integrated EasyTier connectivity are not yet
+verified on Windows. Desktop CI startup smoke now checks the interactive process
+stays alive; the listener intentionally remains stopped until a user starts it.

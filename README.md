@@ -241,3 +241,24 @@ support is claimed.
 
 Architecture, wire format, threat model, decisions and limitations:
 [docs/architecture.md](docs/architecture.md).
+
+## Windows 集成组网（开发中）
+
+启动后先选择“本地局域网”或“集成 EasyTier 内核组网”，再点击“启动服务”。
+局域网模式填写本机局域网 IP，无需 EasyTier。内核模式选择官方 EasyTier TOML
+配置，并填写配置中固定的虚拟 IP 和 MeshClip 应用端口；内核仅通过官方
+`--config-file` 接口启动。网络密钥保留在用户选择的配置文件中，不复制到
+MeshClip 普通配置、不显示在命令行或日志；请妥善限制该文件访问权限。
+
+构建 Windows 集成包前执行 `./scripts/prepare-easytier.ps1`，下载并校验官方
+v2.6.4 Windows x86_64 包，打包内核、DLL、LGPL/GPL 文本、对应源码归档及署名。
+开发模式也需要先执行该脚本。内核以可替换的独立进程运行，不链接到 MIT 核心。
+
+MeshClip 默认不启动应用监听服务。内核创建虚拟网卡可能需要管理员权限和驱动；
+不会自动提权或修改防火墙。启动失败会停止子进程并返回错误。停止服务也会关闭
+手机网页共享；退出进程时内核采用 kill-on-drop 清理。UI 切换模式前须先停止服务。
+进程运行仅说明内核存活，不表示 EasyTier 对端已互通。DHCP 地址自动发现和内核
+异常后自动重启尚未实现。上述内容取代此前仅使用外部 EasyTier 客户端的限制。
+
+验证边界：局域网服务生命周期有自动测试；Windows 集成内核打包、TUN 及实网
+启动尚待执行验证，不能视为已经完成。

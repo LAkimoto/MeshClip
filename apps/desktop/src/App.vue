@@ -69,6 +69,8 @@ async function shareMobileFiles() {
     await invoke("mobile_share", { path });
   notice.value = "已共享所选文件；手机刷新文件列表即可下载。";
 }
+const networkMode = ref("lan"), networkAddress = ref("127.0.0.1:47831"), kernelConfig = ref("");
+const networkState = ref<{running:boolean;kernel_running:boolean;mode:string|null;error:string|null}>();
 const desktop = isTauri();
 let timer: ReturnType<typeof setInterval> | undefined;
 let unlisten: (() => void) | undefined;
@@ -94,7 +96,7 @@ async function act(fn: () => Promise<unknown>) {
   }
 }
 async function refresh() {
-  if (desktop) state.value = await invoke<Status>("snapshot");
+  if (desktop) { state.value = await invoke<Status>("snapshot"); networkState.value = await invoke("network_status"); }
 }
 async function load() {
   cfg.value = await invoke<Config>("config");
@@ -167,7 +169,7 @@ onUnmounted(() => {
       <div class="sidebar-bottom">
         <i :class="{ live: state?.listening }"></i
         >{{ state?.listening ? "应用服务监听中" : "服务未启动"
-        }}<small>EasyTier · 外部客户端模式</small>
+        }}<small>局域网 / 集成 EasyTier</small>
       </div>
     </aside>
     <main>
@@ -200,6 +202,15 @@ onUnmounted(() => {
       <div v-if="state?.clipboard_error" class="banner danger">
         剪切板：{{ state.clipboard_error }}
       </div>
+      <section v-if="desktop">
+        <h3>启动服务 · 选择组网方式</h3>
+        <select v-model="networkMode" :disabled="networkState?.running"><option value="lan">本地局域网（无需 EasyTier）</option><option value="easytier">集成 EasyTier 内核组网</option></select>
+        <label>本机服务 IP:端口<input v-model="networkAddress" :disabled="networkState?.running" placeholder="局域网 IP 或 EasyTier 配置的虚拟 IP:47831" /></label>
+        <div v-if="networkMode === 'easytier'"><button @click="act(async()=>{const p=await open({multiple:false,filters:[{name:'EasyTier TOML',extensions:['toml']}]});if(typeof p==='string')kernelConfig=p;})">选择 EasyTier 配置</button><p>{{ kernelConfig || '请选择官方 EasyTier TOML 配置；网络名称、密钥、虚拟 IP 和对等节点在配置中设置。' }}</p><p>创建虚拟网卡可能需要管理员权限；失败时请检查权限和驱动，不会自动提权。请填写配置中的固定虚拟 IP。</p></div>
+        <button :disabled="networkState?.running" @click="act(async()=>{await invoke('network_start',{options:{mode:networkMode,address:networkAddress,config_file:kernelConfig||null}});await load();})">启动服务</button>
+        <button @click="act(async()=>{await invoke('network_stop');mobile=undefined;})">停止服务与内核</button>
+        <p>{{ networkState?.running ? 'MeshClip 服务已启动' : 'MeshClip 服务未启动' }} · {{ networkState?.kernel_running ? 'EasyTier 内核进程运行中（不代表节点互通）' : 'EasyTier 内核未运行' }}</p><p v-if="networkState?.error" class="error">{{networkState.error}}</p>
+      </section>
       <template v-if="tab === '概览'"
         ><div class="hero">
           <div>

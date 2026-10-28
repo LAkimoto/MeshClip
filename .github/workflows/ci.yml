@@ -38,6 +38,9 @@ jobs:
           cache-dependency-path: apps/desktop/package-lock.json
       - run: npm ci
         working-directory: apps/desktop
+      - name: Prepare EasyTier kernel and notices
+        shell: pwsh
+        run: ./scripts/prepare-easytier.ps1
       - run: cargo clippy -p meshclip-desktop --locked -- -D warnings
       - run: npm run tauri build -- --bundles nsis
         working-directory: apps/desktop
@@ -46,23 +49,11 @@ jobs:
         run: |
           $exe = (Resolve-Path "target/release/meshclip-desktop.exe").Path
           $process = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput desktop.stdout.log -RedirectStandardError desktop.stderr.log
-          $ready = $false
           try {
-            for ($i = 0; $i -lt 60; $i++) {
-              $process.Refresh()
-              if ($process.HasExited) { throw "Desktop exited before startup: $($process.ExitCode)" }
-              $client = [System.Net.Sockets.TcpClient]::new()
-              try {
-                $connect = $client.ConnectAsync("127.0.0.1", 47831)
-                if ($connect.Wait(500) -and $client.Connected) { $ready = $true; break }
-              } catch { } finally { $client.Dispose() }
-              Start-Sleep -Milliseconds 500
-            }
-            if (-not $ready) { throw "Desktop application listener did not become ready" }
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 8
             $process.Refresh()
-            if ($process.HasExited) { throw "Desktop exited after listener startup" }
-            Write-Output "Native desktop stayed alive with application listener on 127.0.0.1:47831"
+            if ($process.HasExited) { throw "Desktop exited before network selection" }
+            Write-Output "Desktop alive awaiting explicit LAN/EasyTier selection"
           } finally {
             $process.Refresh()
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }

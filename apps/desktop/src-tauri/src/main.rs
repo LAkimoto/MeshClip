@@ -126,11 +126,55 @@ async fn mobile_share(web: State<'_, MobileWeb>, path: Option<String>) -> Result
     .map_err(|e| e.to_string())?
     .map_err(|e| e.to_string())
 }
+#[tauri::command]
+async fn network_status(
+    runtime: State<'_, tokio::sync::Mutex<meshclip_core::network::NetworkRuntime>>,
+) -> Result<meshclip_core::network::NetworkStatus, String> {
+    Ok(runtime.lock().await.status())
+}
+#[tauri::command]
+async fn network_start(
+    app: tauri::AppHandle,
+    s: State<'_, Backend>,
+    runtime: State<'_, tokio::sync::Mutex<meshclip_core::network::NetworkRuntime>>,
+    options: meshclip_core::network::StartOptions,
+) -> Result<(), String> {
+    let kernel = app
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?
+        .join("easytier/easytier-core.exe");
+    runtime
+        .lock()
+        .await
+        .start(s.inner().clone(), options, &kernel)
+        .await
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+async fn network_stop(
+    s: State<'_, Backend>,
+    web: State<'_, MobileWeb>,
+    runtime: State<'_, tokio::sync::Mutex<meshclip_core::network::NetworkRuntime>>,
+) -> Result<(), String> {
+    if let Some(b) = web.inner().0.lock().unwrap().take() {
+        b.stop();
+    }
+    runtime
+        .lock()
+        .await
+        .stop(s.inner())
+        .await
+        .map_err(|e| e.to_string())
+}
 fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
     tauri::Builder::default()
+        .manage(tokio::sync::Mutex::new(
+            meshclip_core::network::NetworkRuntime::default(),
+        ))
         .manage(MobileWeb::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::Builder::new().build())
@@ -141,9 +185,6 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 service.start_clipboard();
                 service.start_monitor();
-                if let Err(e) = service.clone().listen().await {
-                    service.status.lock().unwrap().error = Some(e.to_string());
-                }
             });
             let show =
                 tauri::menu::MenuItem::with_id(app, "show", "打开 MeshClip", true, None::<&str>)?;
@@ -162,7 +203,15 @@ fn main() {
                             let _ = w.set_focus();
                         }
                     }
-                    "exit" => app.exit(0),
+                    "exit" => {
+                        let app=app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let s=app.state::<Backend>();
+                            let runtime=app.state::<tokio::sync::Mutex<meshclip_core::network::NetworkRuntime>>();
+                            let _=runtime.lock().await.stop(s.inner()).await;
+                            app.exit(0);
+                        });
+                    },
                     _ => {}
                 })
                 .build(app)?;
@@ -175,6 +224,9 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            network_status,
+            network_start,
+            network_stop,
             snapshot,
             config,
             save_config,

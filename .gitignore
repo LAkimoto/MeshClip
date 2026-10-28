@@ -4,3 +4,5 @@
 **/gen
 *.log
 .meshclip*
+
+/apps/desktop/src-tauri/easytier/

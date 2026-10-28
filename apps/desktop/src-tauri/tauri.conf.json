@@ -25,7 +25,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "shortDescription": "Private clipboard and file relay over EasyTier"
+    "targets": [
+      "nsis"
+    ],
+    "shortDescription": "Private clipboard and file relay over EasyTier",
+    "resources": [
+      "easytier/"
+    ]
   }
 }
